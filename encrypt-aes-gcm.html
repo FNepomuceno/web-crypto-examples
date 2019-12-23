@@ -1,0 +1,95 @@
+<!doctype html>
+<html>
+<head>
+<title>WebCrypto Examples</title>
+</head>
+<body>
+<h2>Encryption with AES-GCM keys</h2>
+
+<p>
+<b>Data to encrypt/decrypt:</b>
+<span id="original-data">-none-</span>
+</p>
+<button type="button" id="generate-btn">Generate Data</button>
+
+<p>
+<b>Encrypted data:</b>
+<span id="encrypted-data">-none-</span>
+</p>
+<button type="button" id="encrypt-btn">Encrypt Data</button>
+
+<p>
+<b>Decrypted data:</b>
+<span id="decrypted-data">-none-</span>
+</p>
+<button type="button" id="decrypt-btn">Decrypt Data</button>
+<script>
+let originalData = null
+let encryptedData = null
+let decryptedData = null
+let aesKey = null
+let aesIv = null
+
+// Generate and set aesKey and aesIv
+window.crypto.subtle.generateKey(
+  { name: 'AES-GCM', length: 256 }, // algorithm for generating key
+  false, // do not allow exporting keys
+  ['encrypt', 'decrypt'] // allowed uses for the keys
+)
+.then(key => {
+  console.log(key)
+  aesKey = key
+  aesIv = window.crypto.getRandomValues(new Uint8Array(12))
+})
+.catch(error => console.error(error))
+
+// Generate data for encryption/decryption
+document.getElementById('generate-btn').addEventListener('click', () => {
+  originalData = window.crypto.getRandomValues(new Uint8Array(16))
+  console.log('Generated Data:', originalData)
+  document.getElementById('original-data').innerHTML =
+    bufferToHex(originalData)
+})
+
+// Encrypt data using the AES-GCM key and IV generated
+document.getElementById('encrypt-btn').addEventListener('click', () => {
+  window.crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv: aesIv }, // algorithm for encrypting
+    aesKey, // AES-GCM key used to encrypt the data
+    originalData // data being encrypted
+  )
+  .then(text => {
+    let textBuffer = new Uint8Array(text)
+    console.log('Encrypted Data:', textBuffer)
+    encryptedData = textBuffer
+    document.getElementById('encrypted-data').innerHTML =
+      bufferToHex(encryptedData)
+  })
+  .catch(error => console.error(error))
+})
+
+// Decrypt data using the AES-GCM key and IV generated
+document.getElementById('decrypt-btn').addEventListener('click', () => {
+  window.crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: aesIv }, // algorithm for decrypting
+    aesKey, // AES-GCM key used to decrypt the data
+    encryptedData // data being decrypted
+  )
+  .then(text => {
+    let textBuffer = new Uint8Array(text)
+    console.log('Decrypted Data:', textBuffer)
+    decryptedData = textBuffer
+    document.getElementById('decrypted-data').innerHTML =
+      bufferToHex(decryptedData)
+  })
+  .catch(error => console.error(error))
+})
+
+function bufferToHex(buf) {
+  let hexArray = Array.from(buf)
+    .map(val => val.toString(16).padStart(2, '0'))
+  return hexArray.join('')
+}
+</script>
+</body>
+</html>
