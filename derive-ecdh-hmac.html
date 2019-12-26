@@ -1,0 +1,150 @@
+<!doctype html>
+<html>
+<head>
+<title>WebCrypto Examples</title>
+</head>
+<body>
+<h2>Generate Key Pairs</h2>
+
+<p>
+<b>Alice's (Public) Key:</b>
+<span id="key-a-data">-none-</span>
+</p>
+<button type="button" id="generate-a-btn">Generate Key</button>
+<p>
+<b>Bob's (Public) Key:</b>
+<span id="key-b-data">-none-</span>
+</p>
+<button type="button" id="generate-b-btn">Generate Key</button>
+
+<h2>Derive Secret Keys</h2>
+
+<p>
+<b>Alice's Secret Key:</b>
+<span id="secret-a-data">-none-</span>
+</p>
+<button type="button" id="derive-a-btn">Derive Key</button>
+
+<p>
+<b>Bob's Secret Key:</b>
+<span id="secret-b-data">-none-</span>
+</p>
+<button type="button" id="derive-b-btn">Derive Key</button>
+<script>
+let ecdhAPub = null
+let ecdhAPrv = null
+let ecdhBPub = null
+let ecdhBPrv = null
+let hmacAKey = null
+let hmacBKey = null
+
+// Generate and set Alice's ECDH keypair
+document.getElementById('generate-a-btn').addEventListener('click', () => {
+  window.crypto.subtle.generateKey(
+    { name: 'ECDH', namedCurve: 'P-384' }, // algorithm for generating key
+    false, // do not allow exporting private key
+    ['deriveKey'] // use only for deriving keys
+  )
+  .then(keypair => {
+    console.log(keypair)
+    console.log(keypair.publicKey)
+    console.log(keypair.privateKey)
+    ecdhAPub = keypair.publicKey
+    ecdhAPrv = keypair.privateKey
+    return window.crypto.subtle.exportKey(
+      'raw', // Export format
+      keypair.publicKey // Key to export
+    )
+  })
+  .then(keyBuffer => {
+    document.getElementById('key-a-data').innerHTML =
+      bufferToHex(keyBuffer)
+  })
+})
+
+// Generate and set Bob's ECDH keypair
+document.getElementById('generate-b-btn').addEventListener('click', () => {
+  window.crypto.subtle.generateKey(
+    { name: 'ECDH', namedCurve: 'P-384' }, // algorithm for generating key
+    false, // do not allow exporting
+    ['deriveKey'] // use only for deriving keys
+  )
+  .then(keypair => {
+    ecdhBPub = keypair.publicKey
+    ecdhBPrv = keypair.privateKey
+    return window.crypto.subtle.exportKey(
+      'raw', // Export format
+      keypair.publicKey // Key to export
+    )
+  })
+  .then(keyBuffer => {
+    document.getElementById('key-b-data').innerHTML =
+      bufferToHex(keyBuffer)
+  })
+})
+
+// Derive and set Alice's secret HMAC keypair
+document.getElementById('derive-a-btn').addEventListener('click', () => {
+  window.crypto.subtle.deriveKey(
+    { name: 'ECDH', public: ecdhBPub }, // derive using Bob's public key
+    ecdhAPrv, // Use Alice's own private key
+    {
+      name: 'HMAC',
+      hash: { name: 'SHA-512' },
+      length: 256
+    }, // algorithm for derived key
+    true, // allow exporting key to check against Bob's secret key
+    ['sign', 'verify'] // for signing and verifying
+  )
+  .then(key => {
+    console.log(key)
+    hmacAKey = key
+    return window.crypto.subtle.exportKey(
+      'raw', // Export format
+      key // Key to export
+    )
+  })
+  .then(keyBuffer => {
+    document.getElementById('secret-a-data').innerHTML =
+      bufferToHex(keyBuffer)
+  })
+  .catch(error => console.error(error))
+})
+
+// Derive and set Bob's secret HMAC keypair
+document.getElementById('derive-b-btn').addEventListener('click', () => {
+  window.crypto.subtle.deriveKey(
+    { name: 'ECDH', public: ecdhAPub }, // derive using Alice's public key
+    ecdhBPrv, // Use Bob's own private key
+    {
+      name: 'HMAC',
+      hash: { name: 'SHA-512' },
+      length: 256
+    }, // algorithm for derived key
+    true, // allow exporting key to check against Alice's secret key
+    ['sign', 'verify'] // for signing and verifying
+  )
+  .then(key => {
+    console.log(key)
+    hmacAKey = key
+    return window.crypto.subtle.exportKey(
+      'raw', // Export format
+      key // Key to export
+    )
+  })
+  .then(keyBuffer => {
+    document.getElementById('secret-b-data').innerHTML =
+      bufferToHex(keyBuffer)
+  })
+  .catch(error => console.error(error))
+})
+
+function bufferToHex(buf) {
+  let hexArray = Array.from(new Uint8Array(buf))
+    .map(val => val.toString(16).padStart(2, '0'))
+  return hexArray.join('')
+}
+</script>
+</body>
+</html>
+
