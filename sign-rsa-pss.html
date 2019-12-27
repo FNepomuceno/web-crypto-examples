@@ -1,0 +1,106 @@
+<!doctype html>
+<html>
+<head>
+<title>WebCrypto Examples</title>
+</head>
+<body>
+<h2>Signing with RSA-PSS keys</h2>
+
+<p>
+<b>Message to sign:</b>
+<input type="text" id="message-data" value="Sign this message!" />
+</p>
+
+<p>
+<b>Key generation status:</b>
+<span id="key-status">Generating...</span>
+</p>
+
+<p>
+<b>Message Signature:</b>
+<span id="signature-data">-none-</span>
+</p>
+<button type="button" id="sign-btn">Sign Message</button>
+
+<p>
+<b>Signature Verification:</b>
+<span id="verify-data">-none-</span>
+</p>
+<button type="button" id="verify-btn">Verify Signature</button>
+<script>
+let message = null
+let signature = null
+let verification = null
+let rsaPubKey = null
+let rsaPrvKey = null
+
+// Generate RSA-PSS key pair
+window.crypto.subtle.generateKey(
+  {
+    name: 'RSA-PSS',
+    modulusLength: 4096,
+    publicExponent: new Uint8Array([1, 0, 1]),
+    hash: 'SHA-256'
+  }, // algorithm for generating key
+  false, // do not allow exporting keys
+  ['sign', 'verify'] // allowed uses for the keys
+)
+.then(keypair => {
+  console.log(keypair)
+  rsaPubKey = keypair.publicKey
+  rsaPrvKey = keypair.privateKey
+  document.getElementById('key-status').innerHTML = 'Generated'
+})
+.catch(error => console.error(error))
+
+// Generate signature of message using generated RSA-PSS private key
+document.getElementById('sign-btn').addEventListener('click', () => {
+  encodeMessage()
+  window.crypto.subtle.sign(
+    { name: 'RSA-PSS', saltLength: 32 }, // algorithm for signing
+    rsaPrvKey, // RSA-PSS private key used to sign the data
+    message // data being signed
+  )
+  .then(sig => {
+    let sigBuffer = new Uint8Array(sig)
+    console.log('Signature:', sigBuffer)
+    signature = sigBuffer
+    document.getElementById('signature-data').innerHTML =
+      bufferToHex(sigBuffer)
+  })
+  .catch(error => console.error(error))
+})
+
+// Verify signature with generated RSA-PSS public key
+document.getElementById('verify-btn').addEventListener('click', () => {
+  encodeMessage()
+  window.crypto.subtle.verify(
+    { name: 'RSA-PSS', saltLength: 32 }, // algorithm for verifying
+    rsaPubKey, // RSA-PSS key used to decrypt the data
+    signature, // signature being verified
+    message // message whose signature is being verified
+  )
+  .then(res => {
+    console.log('Signature verified:', res)
+    verification = res
+    document.getElementById('verify-data').innerHTML = res
+  })
+  .catch(error => console.error(error))
+})
+
+function encodeMessage() {
+  let node = document.getElementById('message-data')
+  let enc = new TextEncoder()
+  let buf = enc.encode(node.value)
+  message = buf
+}
+
+function bufferToHex(buf) {
+  let hexArray = Array.from(buf)
+    .map(val => val.toString(16).padStart(2, '0'))
+  return hexArray.join('')
+}
+</script>
+</body>
+</html>
+
